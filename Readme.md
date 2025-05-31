@@ -73,13 +73,13 @@ register(MyInput, "my-input", {
 
 Use this parameter to attach styles to the ShadowDOM.
 
-This may especially be powerful to reuse the same CSS in many components (like reset CSS).
+This may especially be powerful when you want to reuse the same CSS in many components (like reset CSS), with minimal overheads.
 
 Value must be an array of `CSSStyleSheet`.
 
 ### `slots`
 
-Use this parameter to accept DOM elements as argument to the Custom Element.
+Use this parameter to accept DOM elements as arguments to the Custom Element.
 
 For an example, when you have a component like this:
 
@@ -144,6 +144,8 @@ Specify which property value should be integrated with the enclosing `form` tag.
 
 You may usually want to integrate `value` prop of input elements with `form`s.
 
+If you don't want your component to be associated with any forms, just omit this parameter.
+
 ### `attributes`
 
 Specify attribute parsers to read initial prop values from DOM attributes.
@@ -202,7 +204,7 @@ const MyButtonElement = makeCustomElement(MyButton, {
 
 ## TODO
 
-- Customizable attr-name and variable-name mapping
+- Customizable attr-and-prop name mapping
 - Utility hook like `useState` but the value can be seen from outside as a element prop
 - Read-only props
 
