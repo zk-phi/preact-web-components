@@ -1,5 +1,7 @@
 # preact-web-components
 
+WIP UN-TESTED
+
 Yet another very thin, simple-minded wrapper to convert Preact components to Web Components, with fully-customizable attribute parsers.
 
 ## Installation
