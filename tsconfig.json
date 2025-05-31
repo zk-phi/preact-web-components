@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    /* basic */
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "isolatedModules": true,
+    "strict": true,
+    "skipLibCheck": true,
+    /* jsx */
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact"
+  },
+  "exclude": ["vite.config.ts"]
+}

@@ -1,0 +1,35 @@
+{
+  "name": "phi-components",
+  "version": "0.0.1",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./attribute-types": {
+      "types": "./dist/attributeTypes.d.ts",
+      "import": "./dist/attributeTypes.js"
+    }
+  },
+  "scripts": {
+    "build": "vite build",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.1",
+    "preact": "^10.26.5",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vite-bundle-analyzer": "^0.21.0",
+    "vite-plugin-dts": "^4.5.4"
+  },
+  "peerDependencies": {
+    "preact": "^10.26.5"
+  }
+}
