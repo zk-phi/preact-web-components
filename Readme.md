@@ -1,8 +1,9 @@
 # preact-web-components
 
-WIP UN-TESTED
+- WIP
+- UN-TESTED
 
-Yet another very thin, simple-minded wrapper to convert Preact components to Web Components, with fully-customizable attribute parsers.
+Yet another simple, opinionated wrapper to convert Preact components to Web Components, with highly-customizable attribute parsers.
 
 ## Installation
 
@@ -23,6 +24,37 @@ In `package.json`,
 ## Usage
 
 Use `makeCustomElement` function to convert Preact components,
+
+``` typescript
+import { makeCustomElement } from "preact-web-components";
+import { string } from "preact-web-components/attribute-types";
+
+const MyInputElement = makeCustomElement(MyInput, {
+  properties: ["value"],
+  formAssociated: "value",
+  attributes: {
+    "value": string
+  },
+});
+```
+
+or use `register` function to directly register Preact components as Web Components.
+
+``` typescript
+import { register } from "preact-web-components";
+import { string } from "preact-web-components/attribute-types";
+
+register(MyInput, "my-input", {
+  properties: ["value"],
+  formAssociated: "value",
+  attributes: {
+    "value": string
+  },
+});
+```
+
+## Option parameters
+### Full example
 
 ``` typescript
 import { makeCustomElement, type AttributeValue } from "preact-web-components";
@@ -49,26 +81,10 @@ const MyInputElement = makeCustomElement(MyInput, {
     "my-special-attr": (attrValue: AttributeValue) => (
       mySpecialParser(attrValue)
     ),
-    "my-another-attr": {
-      parse: (attrValue: AttributeValue) => myAnotherParser(attrValue),
-      reflect: (propValue: MyAnotherValue) => myAnotherSerializer(propValue),
-    },
   },
 });
 ```
 
-or use `register` function to directly register Preact components as Web Components.
-
-``` typescript
-import { register, type AttributeValue } from "preact-web-components";
-
-...
-register(MyInput, "my-input", {
-  ...options,
-});
-```
-
-## Option parameters
 ### `adoptedStyleSheets`
 
 Use this parameter to attach styles to the ShadowDOM.
@@ -188,32 +204,30 @@ const MyButtonElement = makeCustomElement(MyButton, {
 });
 ```
 
-If you want to reflect the prop changes back to attributes, you may also set `parse`/`reflect` pair as an attribute type.
+Note that attribute change does not overwrite property values if they are already modified in the other reasons (this is the same behavior as normal DOM elements).
 
-``` typescript
-const MyButtonElement = makeCustomElement(MyButton, {
-  ...
-  attributes: {
-    "variant": {
-      parse: (attr: AttributeValue) => myVariantParser(attr),
-      reflect: (prop: VariantObj) => myVariantSerializer(prop),
-    },
-  },
-});
-```
+## Goals and non-goals
+### Goals
 
-## TODO
+- To make it easier to make custom elements, that behaves just like normal DOM elements
+
+#### TODO
 
 - Customizable attr-and-prop name mapping
 - Utility hook like `useState` but the value can be seen from outside as a element prop
 - Read-only props
 
-## Non-goals
+### Non-goals
 
 Following features are NOT planned (to keep this library simple).
 
 - Support custom elements without ShadowDOM
-  - Reason: Slots is a part of ShadowDOM API
+  - Reason: Slots is a part of ShadowDOM API.
 
 - Support for Preact contexts
   - Reason: You may use signals, if you need a global state.
+
+- Support attribute reflection (auto-updating attribute values on property values change)
+  - Reason: Normal DOM elements does not do that.
+    - This library aims to make it easier to creating custom elements,
+      that behaves just like normal DOM elements.
