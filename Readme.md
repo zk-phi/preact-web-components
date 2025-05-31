@@ -204,6 +204,7 @@ const MyButtonElement = makeCustomElement(MyButton, {
 
 - Customizable attr-name and variable-name mapping
 - Utility hook like `useState` but the value can be seen from outside as a element prop
+- Read-only props
 
 ## Non-goals
 
