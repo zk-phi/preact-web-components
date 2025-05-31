@@ -18,16 +18,12 @@ export type AttributeValue = null | string | boolean | number;
 export type AttributeParser<T> = (a: AttributeValue) => T;
 export type AttributeUnparser<T> = (p: T) => AttributeValue;
 
-export type AttributeConfig<T> =
-  AttributeParser<T> |
-  { parse: AttributeParser<T>, reflect: AttributeUnparser<T> };
-
 type Options = {
   adoptedStyleSheets?: CSSStyleSheet[],
   slots?: string[],
   properties?: string[],
   formAssociated?: string,
-  attributes?: Record<string, AttributeConfig<any>>,
+  attributes?: Record<string, AttributeParser<any>>,
 };
 
 const toCamelCase = (str: string) => (
@@ -46,6 +42,7 @@ export const makeCustomElement = (Component: PreactComponent, options: Options) 
     _vdom;
     _initialProps;
     _internals;
+    _dirtyProps;
 
     constructor () {
       super();
@@ -53,6 +50,7 @@ export const makeCustomElement = (Component: PreactComponent, options: Options) 
       this._root = this.attachShadow({ mode: "open" });
       this._vdom = null as (VNode | null);
       this._internals = options.formAssociated ? this.attachInternals() : null;
+      this._dirtyProps = {} as Record<string, boolean>;
       this._initialProps = {} as Record<string, any>;
       if (options.adoptedStyleSheets) {
         this._root.adoptedStyleSheets = options.adoptedStyleSheets;
@@ -61,7 +59,10 @@ export const makeCustomElement = (Component: PreactComponent, options: Options) 
 
     // Reflect prop/attr change to Preact props
     // -- Maybe VALUE cannot be typed in TypeScript.
-    updateProp (name: string, value: any) {
+    updateProp (name: string, value: any, markAsDirty: boolean) {
+      if (markAsDirty) {
+        this._dirtyProps[name] = true;
+      }
       // Before the first render: reserve the new value for the first render
       if (!this._vdom) {
         this._initialProps[name] = value;
@@ -78,19 +79,18 @@ export const makeCustomElement = (Component: PreactComponent, options: Options) 
     parseAttribute (
       name: string,
       rawValue: any,
-      prepend?: boolean /* = do not overwrite existing values */
     ) {
-      if (prepend && this._initialProps?.hasOwnProperty(name)) {
+      // If corresponding property value is modified somewhere,
+      // attribute change does not affect property value anymore.
+      // This is the same behavior as normal DOM elements.
+      if (this._dirtyProps[name]) {
         return;
       }
-      if (options.attributes?.[name]) {
-        const config = options.attributes[name];
-        const parser = ("parse" in config) ? config.parse : config;
-        if (parser) {
-          // Attributes value defaults to null, but Preact props value defaults to undef.
-          // So we convert here for usability.
-          this.updateProp(name, parser(rawValue ?? undefined));
-        }
+      const parser = options.attributes?.[name];
+      if (parser) {
+        // Attributes value defaults to null, but Preact props value defaults to undef.
+        // So we convert here for usability.
+        this.updateProp(name, parser(rawValue ?? undefined), false);
       }
     }
 
@@ -124,16 +124,12 @@ export const makeCustomElement = (Component: PreactComponent, options: Options) 
   (options.properties ?? []).forEach(name => {
     const isAssociatedField = name === options.formAssociated;
     const config = options.attributes?.[name];
-    const unparser = config && ("reflect" in config) && config.reflect;
     Object.defineProperty(PreactElement.prototype, name, {
       get () {
         return this._vdom.props[name];
       },
       set (v) {
-        this.updateProp(name, v);
-        if (unparser) {
-          this.setAttribute(name, unparser(v));
-        }
+        this.updateProp(name, v, true);
         if (isAssociatedField && this._internals) {
           this._internals.setFormValue(v);
         }

@@ -1,27 +1,17 @@
-import type { AttributeConfig, AttributeValue } from ".";
+import type { AttributeParser, AttributeValue } from "./preact-custom-component";
 
-export const boolean: AttributeConfig<boolean> = {
-  parse: val => (
-    (val && val !== "false" && val !== "0") || val === ""
-  ),
-  reflect: val => val,
-};
+export const boolean: AttributeParser<boolean> = val => (
+  (val && val !== "false" && val !== "0") || val === ""
+);
 
-export const string: AttributeConfig<string> = {
-  parse: val => (
-    val == null ? "" : val.toString()
-  ),
-  reflect: val => val,
-};
+export const string: AttributeParser<string> = val => (
+  val == null ? "" : val.toString()
+);
 
-export const number: AttributeConfig<number> = {
-  parse: val => (
-    val === null || val === "" || val === false || val === true ? NaN : Number(val)
-  ),
-  reflect: val => val,
-};
+export const number: AttributeParser<number> = val => (
+  val === null || val === "" || val === false || val === true ? NaN : Number(val)
+);
 
-export const any: AttributeConfig<AttributeValue> = {
-  parse: val => val,
-  reflect: val => val,
-};
+export const any: AttributeParser<AttributeValue> = val => (
+  val
+);
