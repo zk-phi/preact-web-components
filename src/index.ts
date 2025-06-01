@@ -1,110 +1,163 @@
 import {
   h,
-  cloneElement,
   render,
   hydrate,
   type FunctionComponent,
   type ComponentClass,
   type FunctionalComponent,
   type VNode,
-} from 'preact';
+} from "preact";
+import { signal, type Signal } from "@preact/signals";
+
+export type AttributeValue = null | string | boolean | number;
+
+// ----
 
 type PreactComponent =
   FunctionComponent<any> |
   ComponentClass<any> |
   FunctionalComponent<any>;
 
-export type AttributeValue = null | string | boolean | number;
-export type AttributeParser<T> = (a: AttributeValue) => T;
-export type AttributeUnparser<T> = (p: T) => AttributeValue;
+type AttributeConfig<T> = {
+  name: string,
+  type: (value: AttributeValue) => T,
+};
+type PropertyConfig<T> = (
+  { name: string, formAssociated?: boolean }
+) & (
+  { attribute: AttributeConfig<T> } | { initialValue: T }
+);
 
 type Options = {
   adoptedStyleSheets?: CSSStyleSheet[],
   slots?: string[],
-  properties?: string[],
-  formAssociated?: string,
-  attributes?: Record<string, AttributeParser<any>>,
+  properties?: PropertyConfig<any>[],
 };
 
-const toCamelCase = (str: string) => (
-  str.replace(/-(\w)/g, (_, c) => (c ? c.toUpperCase() : ''))
-);
+type AttributeChangeHandler = (v: AttributeValue) => void;
+
+// ----
 
 const Slot = (props: { name?: string }) => (
   h("slot", props)
 );
 
-export const makeCustomElement = (Component: PreactComponent, options: Options) => {
-  class PreactElement extends HTMLElement {
-    static observedAttributes = Object.keys(options.attributes ?? {});
-    static formAssociated = !!options.formAssociated;
+// Sanitize any value to FormValue
+const serializeFormValue = (value: any): string | FormData => {
+  if (value == null) {
+    return "";
+  }
+  if (typeof value !== "object") {
+    return value.toString();
+  }
+  if (Array.isArray(value)) {
+    value.map(item => item.toString().replaceAll(",", "\\,")).join(",");
+  }
+  // valueType must be "object" here
+  const fields = Object.keys(value);
+  const formData = new FormData();
+  fields.forEach(field => {
+    formData.append(field, value[field].toString());
+  });
+  return formData;
+}
+
+const pushOrNew = <T>(obj: Record<string, T[]>, field: string, item: T) => {
+  if (obj[field]) {
+    obj[field].push(item);
+  } else {
+    obj[field] = [item];
+  }
+}
+
+export const makeCustomElement = (
+  Component: PreactComponent,
+  options?: Options,
+) => {
+  const properties = options?.properties ?? [];
+  const slots = options?.slots ?? [];
+  const sheets = options?.adoptedStyleSheets ?? [];
+
+  const observedAttributes = (
+    properties.filter(prop => "attribute" in prop).map(prop => prop.attribute.name)
+  );
+
+  const formAssociatedField = properties.find(prop => prop.formAssociated)?.name;
+
+  class CustomElement extends HTMLElement {
+    static observedAttributes = observedAttributes;
+    static formAssociated = !!formAssociatedField;
     _root;
     _vdom;
-    _initialProps;
     _internals;
+    _props;
     _dirtyProps;
+    _attributeChangeHooks;
 
     constructor () {
       super();
       // This library assumes that the ShadowDOM feature is always enabled
       this._root = this.attachShadow({ mode: "open" });
+      this._root.adoptedStyleSheets = sheets;
       this._vdom = null as (VNode | null);
-      this._internals = options.formAssociated ? this.attachInternals() : null;
+      this._internals = formAssociatedField ? this.attachInternals() : null;
+      this._props = {} as Record<string, Signal<any>>;
       this._dirtyProps = {} as Record<string, boolean>;
-      this._initialProps = {} as Record<string, any>;
-      if (options.adoptedStyleSheets) {
-        this._root.adoptedStyleSheets = options.adoptedStyleSheets;
-      }
+      this._attributeChangeHooks = {} as Record<string, AttributeChangeHandler[]>;
+      properties.forEach(prop => this.registerProperty(prop));
     }
 
-    // Reflect prop/attr change to Preact props
-    // -- Maybe VALUE cannot be typed in TypeScript.
-    updateProp (name: string, value: any, markAsDirty: boolean) {
-      if (markAsDirty) {
-        this._dirtyProps[name] = true;
-      }
-      // Before the first render: reserve the new value for the first render
-      if (!this._vdom) {
-        this._initialProps[name] = value;
-        this._initialProps[toCamelCase(name)] = value;
-        return;
-      }
-      // After the first render: rerender UI with the new value
-      const props = { [name]: value, [toCamelCase(name)]: value };
-      this._vdom = cloneElement(this._vdom, props);
-      render(this._vdom, this._root);
+    parseAttribute <T>(attribute: AttributeConfig<T>) {
+      return attribute.type(this.getAttribute(attribute.name));
     }
 
-    // Reflect raw attr value to Preact props if appropreate
-    parseAttribute (
-      name: string,
-      rawValue: any,
-    ) {
-      // If corresponding property value is modified somewhere,
-      // attribute change does not affect property value anymore.
-      // This is the same behavior as normal DOM elements.
-      if (this._dirtyProps[name]) {
-        return;
-      }
-      const parser = options.attributes?.[name];
-      if (parser) {
-        // Attributes value defaults to null, but Preact props value defaults to undef.
-        // So we convert here for usability.
-        this.updateProp(name, parser(rawValue ?? undefined), false);
+    registerProperty <T>(options: PropertyConfig<T>) {
+      const name = options.name;
+
+      const isAssociatedField = formAssociatedField === name;
+      const getter = () => this._props[name].value;
+      const setter = (value: T, markAsDirty: boolean) => {
+        if (value !== this._props[name].value) {
+          this._props[name].value = value;
+          if (markAsDirty) {
+            this._dirtyProps[name] = true;
+          }
+          if (isAssociatedField && this._internals) {
+            this._internals.setFormValue(serializeFormValue(value));
+          }
+        }
+      };
+      Object.defineProperty(this, name, {
+        get: getter,
+        set: (value: T) => setter(value, true),
+      });
+
+      const initialValue = "initialValue" in options ? (
+        options.initialValue
+      ) : (
+        this.parseAttribute(options.attribute)
+      );
+      const exposedSetter = (value: T) => setter(value, true);
+      this._props[name] = signal(initialValue);
+
+      if ("attribute" in options) {
+        const onAttributeChange = (newValue: AttributeValue) => {
+          if (!this._dirtyProps[name]) {
+            setter(options.attribute.type(newValue), false);
+          }
+        };
+        pushOrNew(this._attributeChangeHooks, name, onAttributeChange);
       }
     }
 
     connectedCallback () {
-      const { attributes, childNodes } = this;
-      // Parse attributes.
-      // Results are accumulated in `this._initialProps` by `updateProp`.
-      for (let i = 0; i < attributes.length; i++) {
-        this.parseAttribute(attributes[i].name, attributes[i].value, true);
-      }
-      const props = this._initialProps ?? {};
-      (options.slots ?? []).forEach(name => {
-        props[name] = h(Slot, { name }, null)
-      });
+      const slots = Object.fromEntries(
+        (options?.slots ?? []).map(slot => [
+          slot,
+          h(Slot, { name: slot }, null),
+        ]),
+      );
+      const props = { ...this._props, ...slots };
       this._vdom = h(Component, props, h(Slot, { name: undefined }, null));
       // TODO: I don't know how this works (just copy-pasted from preact-custom-component)
       (this.hasAttribute('hydrate') ? hydrate : render)(this._vdom, this._root);
@@ -115,32 +168,21 @@ export const makeCustomElement = (Component: PreactComponent, options: Options) 
       render(null, this._root);
     }
 
-    attributeChangedCallback (name: string, _: any, newValue: any) {
-      this.parseAttribute(name, newValue);
+    attributeChangedCallback (name: string, _: AttributeValue, newValue: AttributeValue) {
+      if (this._attributeChangeHooks[name]) {
+        this._attributeChangeHooks[name].forEach(hook => hook(newValue));
+      }
     }
   }
 
-  // Keep Preact props and DOM props in sync
-  (options.properties ?? []).forEach(name => {
-    const isAssociatedField = name === options.formAssociated;
-    const config = options.attributes?.[name];
-    Object.defineProperty(PreactElement.prototype, name, {
-      get () {
-        return this._vdom.props[name];
-      },
-      set (v) {
-        this.updateProp(name, v, true);
-        if (isAssociatedField && this._internals) {
-          this._internals.setFormValue(v);
-        }
-      },
-    });
-  });
-
-  return PreactElement;
+  return CustomElement;
 };
 
-export const register = (Component: PreactComponent, tagName: string, options: Options) => {
+export const register = (
+  Component: PreactComponent,
+  tagName: string,
+  options?: Options,
+) => {
   const element = makeCustomElement(Component, options);
   return customElements.define(tagName, element);
 };

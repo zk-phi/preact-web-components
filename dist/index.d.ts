@@ -1,30 +1,38 @@
 import { FunctionComponent, ComponentClass, FunctionalComponent, VNode } from 'preact';
-type PreactComponent = FunctionComponent<any> | ComponentClass<any> | FunctionalComponent<any>;
+import { Signal } from '@preact/signals';
 export type AttributeValue = null | string | boolean | number;
-export type AttributeParser<T> = (a: AttributeValue) => T;
-export type AttributeUnparser<T> = (p: T) => AttributeValue;
-export type AttributeConfig<T> = AttributeParser<T> | {
-    parse: AttributeParser<T>;
-    reflect: AttributeUnparser<T>;
+type PreactComponent = FunctionComponent<any> | ComponentClass<any> | FunctionalComponent<any>;
+type AttributeConfig<T> = {
+    name: string;
+    type: (value: AttributeValue) => T;
 };
+type PropertyConfig<T> = ({
+    name: string;
+    formAssociated?: boolean;
+}) & ({
+    attribute: AttributeConfig<T>;
+} | {
+    initialValue: T;
+});
 type Options = {
     adoptedStyleSheets?: CSSStyleSheet[];
     slots?: string[];
-    properties?: string[];
-    formAssociated?: string;
-    attributes?: Record<string, AttributeConfig<any>>;
+    properties?: PropertyConfig<any>[];
 };
-export declare const makeCustomElement: (Component: PreactComponent, options: Options) => {
+type AttributeChangeHandler = (v: AttributeValue) => void;
+export declare const makeCustomElement: (Component: PreactComponent, options?: Options) => {
     new (): {
         _root: ShadowRoot;
         _vdom: VNode<{}> | null;
-        _initialProps: Record<string, any>;
         _internals: ElementInternals | null;
-        updateProp(name: string, value: any): void;
-        parseAttribute(name: string, rawValue: any, prepend?: boolean): void;
+        _props: Record<string, Signal<any>>;
+        _dirtyProps: Record<string, boolean>;
+        _attributeChangeHooks: Record<string, AttributeChangeHandler[]>;
+        parseAttribute<T>(attribute: AttributeConfig<T>): T;
+        registerProperty<T>(options: PropertyConfig<T>): void;
         connectedCallback(): void;
         disconnectedCallback(): void;
-        attributeChangedCallback(name: string, _: any, newValue: any): void;
+        attributeChangedCallback(name: string, _: AttributeValue, newValue: AttributeValue): void;
         accessKey: string;
         readonly accessKeyLabel: string;
         autocapitalize: string;
@@ -367,5 +375,5 @@ export declare const makeCustomElement: (Component: PreactComponent, options: Op
     observedAttributes: string[];
     formAssociated: boolean;
 };
-export declare const register: (Component: PreactComponent, tagName: string, options: Options) => void;
+export declare const register: (Component: PreactComponent, tagName: string, options?: Options) => void;
 export {};

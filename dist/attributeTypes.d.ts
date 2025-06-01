@@ -1,5 +1,5 @@
-import { AttributeConfig, AttributeValue } from '.';
-export declare const boolean: AttributeConfig<boolean>;
-export declare const string: AttributeConfig<string>;
-export declare const number: AttributeConfig<number>;
-export declare const any: AttributeConfig<AttributeValue>;
+import { AttributeValue } from '.';
+export declare const boolean: (val: AttributeValue) => boolean;
+export declare const string: (val: AttributeValue) => string;
+export declare const number: (val: AttributeValue) => number;
+export declare const raw: (val: AttributeValue) => AttributeValue;
