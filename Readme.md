@@ -2,7 +2,7 @@
 
 - 💀 This is an WIP, UNTESTED
 
-Yet another VERY thin, opinionated wrapper to convert Preact components to Web Components, with highly-customizable attribute parsers.
+Yet another VERY thin (<1KB Brotli'd), opinionated wrapper to convert Preact components to Web Components, with highly-customizable attribute parsers.
 
 ## Installation
 
@@ -57,7 +57,7 @@ register(MyInput, "my-input", {
 
 ``` typescript
 import type { ComponentChildren } from "preact";
-import { makeCustomElement, type AttributeValue } from "preact-web-components";
+import { makeCustomElement, type AttributeValue, type SignalLike } from "preact-web-components";
 import { string } from "preact-web-components/attribute-types";
 import styles from "./style.css?inline";
 
@@ -77,9 +77,9 @@ export const Input = ({ name, value, danger, icon, children }: {
 
 // Web component version
 const WCInput = ({ name, value, danger, icon, children }: {
-  name: Signal<string>,
-  value: Signal<string>,
-  danger: Signal<boolean>,
+  name: SignalLike<string>,
+  value: SignalLike<string>,
+  danger: SignalLike<boolean>,
   icon: ComponentChildren,
   children: ComponentChildren,
 }) => (
