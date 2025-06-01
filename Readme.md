@@ -1,9 +1,8 @@
 # preact-web-components
 
-- WIP
-- UN-TESTED
+- 💀 This is an WIP, UNTESTED
 
-Yet another simple, opinionated wrapper to convert Preact components to Web Components, with highly-customizable attribute parsers.
+Yet another VERY thin, opinionated wrapper to convert Preact components to Web Components, with highly-customizable attribute parsers.
 
 ## Installation
 
@@ -30,11 +29,11 @@ import { makeCustomElement } from "preact-web-components";
 import { string } from "preact-web-components/attribute-types";
 
 const MyInputElement = makeCustomElement(MyInput, {
-  properties: ["value"],
-  formAssociated: "value",
-  attributes: {
-    "value": string
-  },
+  properties: [{
+    name: "value",
+    formAssociated: true,
+    attributes: { name: "value", type: string },
+  }],
 });
 ```
 
@@ -45,11 +44,11 @@ import { register } from "preact-web-components";
 import { string } from "preact-web-components/attribute-types";
 
 register(MyInput, "my-input", {
-  properties: ["value"],
-  formAssociated: "value",
-  attributes: {
-    "value": string
-  },
+  properties: [{
+    name: "value",
+    formAssociated: true,
+    attributes: { name: "value", type: string },
+  }],
 });
 ```
 
@@ -57,31 +56,69 @@ register(MyInput, "my-input", {
 ### Full example
 
 ``` typescript
+import type { ComponentChildren } from "preact";
 import { makeCustomElement, type AttributeValue } from "preact-web-components";
 import { string } from "preact-web-components/attribute-types";
-import MyInput from "./MyInput";
 import styles from "./style.css?inline";
+
+// Preact component
+export const Input = ({ name, value, danger, icon, children }: {
+  name: string,
+  value: string,
+  danger: boolean,
+  icon: ComponentChildren,
+  children: ComponentChildren,
+}) => (
+  <div className={`input ${danger ? "danger" : ""}`}>
+    <label for="name">{icon} {children}</label>
+    <input name={name} type="text" value="value" />
+  </div>
+);
+
+// Web component version
+const WCInput = ({ name, value, danger, icon, children }: {
+  name: Signal<string>,
+  value: Signal<string>,
+  danger: Signal<boolean>,
+  icon: ComponentChildren,
+  children: ComponentChildren,
+}) => (
+  <Input name={name.value} value={value.value} danger={danger.value} icon={icon}>
+    {children}
+  </Input>
+);
 
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(styles);
 
-const MyInputElement = makeCustomElement(MyInput, {
-  // Add styles to the ShadowDOM
+const WCInputElement = makeCustomElement(WCInput, {
+  // - Add styles to the ShadowDOM
+  // This may especially be powerful when you want to reuse the same CSS
+  // in many components (like reset CSS) with minimal overheads.
   adoptedStyleSheets: [sheet],
-  // Create slots and pass to Preact component through its properties
-  // eg. When set `["label"]`, then `<slot name="label" />` is passed to the `label` prop
-  slots: ["label"],
-  // Expose some properties to update/read property values from outside the component
-  properties: ["onInput", "value"],
-  // Integrate "value" prop to the enclosing "form" tag
-  formAssociated: "value"
-  // Set attribute parsers to read initial props from DOM attributes
-  attributes: {
-    value: string,
-    "my-special-attr": (attrValue: AttributeValue) => (
-      mySpecialParser(attrValue)
-    ),
-  },
+  // - Register slots
+  // Create slots and pass to Preact component through its properties.
+  // This is usually used for props with type `ComponentChildren`.
+  slots: ["icon"],
+  // - Register DOM properties
+  // Create states that are both accessible from the Preact world,
+  // and the vanilla JS world.
+  // They look like signals from the Preact world, and the component will be
+  // re-rendered on changes.
+  properties: [{
+    name: "value",
+    // This value will be emitted when enclosing `form` is "submit"-ted.
+    formAssociated: true,
+    // Initial values can (optionally) be retrieved from each corresponding DOM attributes.
+    attribute: { name: "value", type: string },
+  }, {
+    name: "danger",
+    attribute: {
+      name: "danger",
+      // You may also define custom parsers for attributes
+      type: (v: AttributeValue) => v && v !== "false" || v === "",
+    },
+  }],
 });
 ```
 
@@ -128,7 +165,7 @@ so that users may pass an `img` tag as the `icon` argument of the component.
 
 ### `properties`
 
-Specify which properties should be exposed, to make them readable/updatable from the vanilla JS world.
+Use this parameter to create local states, that are both accessible from inside the Preact component, and outside (i.e. the vanilla JS world).
 
 For an example, when you have an input component like this:
 
@@ -138,12 +175,21 @@ const MyInput = ({ value, onInput }) => (
 )
 ```
 
-then you may want to expose `value` prop,
+then you may want a `value` DOM prop,
 
 ``` typescript
-const MyInputElement = makeCustomElement(MyInput, {
+const WCInput = ({ value }: {
+  // DOM properties look like Signals from the Preact world
+  value: Signal<string>
+}) => (
+  <MyInput value={value.value} />
+);
+
+const MyInputElement = makeCustomElement(WCInput, {
   ...
-  props: ["value"],
+  props: [
+    { name: "value", initialValue: "" },
+  ],
 });
 ```
 
@@ -154,17 +200,26 @@ const input = document.getElementsByTagName("my-input")[0];
 input.value = "hello!";
 ```
 
-### `formAssociated`
+#### `formAssociated`
 
-Specify which property value should be integrated with the enclosing `form` tag.
+When you want to emit an input components' value on `form` submit, you may specify `formAssociated: true` for the property you want to emit.
 
-You may usually want to integrate `value` prop of input elements with `form`s.
+``` typescript
+const MyInputElement = makeCustomElement(WCInput, {
+  ...
+  props: [{
+    name: "value",
+    initialValue: "",
+    formAssociated: true,
+  }],
+});
+```
 
-If you don't want your component to be associated with any forms, just omit this parameter.
+Users can use your component, just like other input elements this way.
 
-### `attributes`
+#### `attribute`
 
-Specify attribute parsers to read initial prop values from DOM attributes.
+When you want to retrieve initial values of DOM properties, you may specify `attribute` field of the property.
 
 For an example, when you have a component like this:
 
@@ -181,9 +236,10 @@ then you may be want to read `variant` value from the DOM attributes,
 ``` typescript
 const MyButtonElement = makeCustomElement(MyButton, {
   ...
-  attributes: {
-    "variant": string,
-  },
+  properties: [{
+    name: "variant",
+    attribute: { name: "variant", type: string }
+  }],
 });
 ```
 
@@ -198,13 +254,17 @@ You may also set an arbitrary parser as an attribute type.
 ``` typescript
 const MyButtonElement = makeCustomElement(MyButton, {
   ...
-  attributes: {
-    "variant": (attr: AttributeValue) => myVariantParser(attr),
-  },
+  properties: [{
+    name: "variant",
+    attribute: {
+      name: "variant",
+      type: (attr: AttributeValue) => myVariantParser(attr),
+    },
+  }],
 });
 ```
 
-Note that attribute change does not overwrite property values if they are already modified in the other reasons (this is the same behavior as normal DOM elements).
+Note that attribute change does not overwrite property values, if they are already modified by the other reasons (this is the same behavior as normal DOM elements).
 
 ## Goals and non-goals
 ### Goals
@@ -213,9 +273,7 @@ Note that attribute change does not overwrite property values if they are alread
 
 #### TODO
 
-- Customizable attr-and-prop name mapping
-- Utility hook like `useState` but the value can be seen from outside as a element prop
-- Read-only props
+- Read-only props maybe ?
 
 ### Non-goals
 
