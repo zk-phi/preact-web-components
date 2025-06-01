@@ -35,7 +35,6 @@ type Options = {
   properties?: PropertyConfig<any>[],
 };
 
-type AttributeChangeHandler = (v: AttributeValue) => void;
 type InternalProp<T> = { _dirty: boolean, _value: T, value: T };
 
 // ----
@@ -64,14 +63,6 @@ const serializeFormValue = (value: any): string | FormData => {
   return formData;
 }
 
-const pushOrNew = <T>(obj: Record<string, T[]>, field: string, item: T) => {
-  if (obj[field]) {
-    obj[field].push(item);
-  } else {
-    obj[field] = [item];
-  }
-}
-
 export const makeCustomElement = (
   Component: PreactComponent,
   options?: Options,
@@ -79,11 +70,12 @@ export const makeCustomElement = (
   const properties = options?.properties ?? [];
   const slots = options?.slots ?? [];
   const sheets = options?.adoptedStyleSheets ?? [];
-
-  const observedAttributes = (
-    properties.filter(prop => "attribute" in prop).map(prop => prop.attribute.name)
+  const attributes = Object.fromEntries(
+    properties.filter(prop => "attribute" in prop).map(prop => (
+      [prop.attribute.name, { prop: prop.name, parser: prop.attribute.type }]
+    )),
   );
-
+  const observedAttributes = Object.keys(attributes);
   const formAssociatedField = properties.find(prop => prop.formAssociated)?.name;
 
   class CustomElement extends HTMLElement {
@@ -93,7 +85,6 @@ export const makeCustomElement = (
     _vdom;
     _internals;
     _props;
-    _attributeChangeHooks;
 
     constructor () {
       super();
@@ -102,56 +93,38 @@ export const makeCustomElement = (
       this._root.adoptedStyleSheets = sheets;
       this._vdom = null as (VNode | null);
       this._internals = formAssociatedField ? this.attachInternals() : null;
-      this._props = {} as Record<string, InternalProp<any>>;
-      this._attributeChangeHooks = {} as Record<string, AttributeChangeHandler[]>;
-      properties.forEach(prop => this.registerProperty(prop));
+      const el = this;
+      this._props = Object.fromEntries(
+        properties.map(prop => {
+          const initialValue = "initialValue" in prop ? (
+            prop.initialValue
+          ) : (
+            this.parseAttribute(prop.attribute)
+          );
+          return [prop.name, {
+            _dirty: false,
+            _value: initialValue,
+            get value () { return this._value; },
+            set value (value: any) { el.setProp(prop.name, value, true); },
+          }];
+        })
+      );
     }
 
     parseAttribute <T>(attribute: AttributeConfig<T>) {
       return attribute.type(this.getAttribute(attribute.name));
     }
 
-    registerProperty <T>(options: PropertyConfig<T>) {
-      const name = options.name;
-
-      const isAssociatedField = formAssociatedField === name;
-      const getter = () => this._props[name].value;
-      const setter = (value: T, markAsDirty: boolean) => {
-        if (value !== this._props[name].value) {
-          this._props[name]._value = value;
-          if (markAsDirty) {
-            this._props[name]._dirty = true;
-          }
-          if (isAssociatedField && this._internals) {
-            this._internals.setFormValue(serializeFormValue(value));
-          }
-          this.rerender();
+    setProp (name: string, value: any, markAsDirty: boolean) {
+      if (this._props[name]._value !== value) {
+        this._props[name]._value = value;
+        if (markAsDirty) {
+          this._props[name]._dirty = true;
         }
-      };
-      Object.defineProperty(this, name, {
-        get: getter,
-        set: (value: T) => setter(value, true),
-      });
-
-      const initialValue = "initialValue" in options ? (
-        options.initialValue
-      ) : (
-        this.parseAttribute(options.attribute)
-      );
-      this._props[name] = {
-        _value: initialValue,
-        _dirty: false,
-        get value () { return this._value; },
-        set value (v: T) { setter(v, true); },
-      };
-
-      if ("attribute" in options) {
-        const onAttributeChange = (newValue: AttributeValue) => {
-          if (!this._props[name]?._dirty) {
-            setter(options.attribute.type(newValue), false);
-          }
-        };
-        pushOrNew(this._attributeChangeHooks, name, onAttributeChange);
+        if (formAssociatedField === name && this._internals) {
+          this._internals.setFormValue(serializeFormValue(value));
+        }
+        this.rerender();
       }
     }
 
@@ -163,13 +136,10 @@ export const makeCustomElement = (
     }
 
     connectedCallback () {
-      const slots = Object.fromEntries(
-        (options?.slots ?? []).map(slot => [
-          slot,
-          h(Slot, { name: slot }, null),
-        ]),
+      const vSlots: Record<string, VNode<any>> = Object.fromEntries(
+        slots.map(slot => [slot, h(Slot, { name: slot }, null)]),
       );
-      const props = { ...this._props, ...slots };
+      const props = { ...this._props, ...vSlots };
       this._vdom = h(Component, props, h(Slot, { name: undefined }, null));
       // TODO: I don't know how this works (just copy-pasted from preact-custom-component)
       (this.hasAttribute('hydrate') ? hydrate : render)(this._vdom, this._root);
@@ -181,11 +151,23 @@ export const makeCustomElement = (
     }
 
     attributeChangedCallback (name: string, _: AttributeValue, newValue: AttributeValue) {
-      if (this._attributeChangeHooks[name]) {
-        this._attributeChangeHooks[name].forEach(hook => hook(newValue));
+      const { parser, prop } = attributes[name];
+      if (!this._props[prop]._dirty) {
+        this.setProp(prop, parser(newValue), false);
       }
     }
   }
+
+  properties.forEach(prop => (
+    Object.defineProperty(CustomElement.prototype, prop.name, {
+      get () {
+        return this._props[prop.name]._value;
+      },
+      set (value: any) {
+        this.setProp(prop.name, value, true);
+      },
+    })
+  ));
 
   return CustomElement;
 };

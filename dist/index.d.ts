@@ -21,21 +21,20 @@ type Options = {
     slots?: string[];
     properties?: PropertyConfig<any>[];
 };
-type AttributeChangeHandler = (v: AttributeValue) => void;
-type InternalProp<T> = {
-    _dirty: boolean;
-    _value: T;
-    value: T;
-};
 export declare const makeCustomElement: (Component: PreactComponent, options?: Options) => {
     new (): {
         _root: ShadowRoot;
         _vdom: VNode<{}> | null;
         _internals: ElementInternals | null;
-        _props: Record<string, InternalProp<any>>;
-        _attributeChangeHooks: Record<string, AttributeChangeHandler[]>;
+        _props: {
+            [k: string]: {
+                _dirty: boolean;
+                _value: any;
+                value: any;
+            };
+        };
         parseAttribute<T>(attribute: AttributeConfig<T>): T;
-        registerProperty<T>(options: PropertyConfig<T>): void;
+        setProp(name: string, value: any, markAsDirty: boolean): void;
         rerender(): void;
         connectedCallback(): void;
         disconnectedCallback(): void;
