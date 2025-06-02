@@ -276,6 +276,27 @@ Note that attribute change does not overwrite property values, if they are alrea
 - Read-only props maybe ?
 - More strict types
 
+#### Type-safety
+
+Currently, this package's type is weak (due to technical reason -- or lack of my knowledge).
+
+For an example, following snippet passes the type check, but is not type-safe.
+
+``` typescript
+const Component = ({ stringProp }: { stringProp: SignalLike<string> }) => (
+  <span class="foo">
+    {stringProp.value}
+  </span>
+);
+
+const Element = makeCustomElement(Component, {
+  properties: [{
+    name: "stringProp",
+    attributes: { name: "string-prop", type: boolean }, // type mismatch
+  }],
+});
+```
+
 ### Non-goals
 
 Following features are NOT planned (to keep this library simple).
