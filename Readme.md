@@ -271,9 +271,10 @@ Note that attribute change does not overwrite property values, if they are alrea
 
 - To make it easier to make custom elements, that behaves just like normal DOM elements
 
-#### TODO
+#### TODOs
 
 - Read-only props maybe ?
+- More strict types
 
 ### Non-goals
 
