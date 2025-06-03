@@ -21,18 +21,18 @@ type Options = {
     slots?: string[];
     properties?: PropertyConfig<any>[];
 };
+type InternalProp<T> = {
+    _dirty: boolean;
+    _value: T;
+    value: T;
+};
 export declare const makeCustomElement: (Component: PreactComponent, options?: Options) => {
     new (): {
         _root: ShadowRoot;
-        _vdom: VNode<{}> | null;
+        _vdom: VNode | null;
         _internals: ElementInternals | null;
-        _props: {
-            [k: string]: {
-                _dirty: boolean;
-                _value: any;
-                value: any;
-            };
-        };
+        _props: Record<string, InternalProp<any>>;
+        _frameRequested: boolean;
         parseAttribute<T>(attribute: AttributeConfig<T>): T;
         setProp(name: string, value: any, markAsDirty: boolean): void;
         rerender(): void;

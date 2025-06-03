@@ -81,10 +81,11 @@ export const makeCustomElement = (
   class CustomElement extends HTMLElement {
     static observedAttributes = observedAttributes;
     static formAssociated = !!formAssociatedField;
-    _root;
-    _vdom;
-    _internals;
-    _props;
+    _root: ShadowRoot;
+    _vdom: VNode | null = null;
+    _internals: ElementInternals | null;
+    _props: Record<string, InternalProp<any>>;
+    _frameRequested = false;
 
     constructor () {
       super();
@@ -129,9 +130,14 @@ export const makeCustomElement = (
     }
 
     rerender () {
-      if (this._vdom) {
-        this._vdom = cloneElement(this._vdom, this._props);
-        render(this._vdom, this._root);
+      if (!this._frameRequested) {
+        requestAnimationFrame(() => {
+          if (this._vdom) {
+            this._frameRequested = false;
+            this._vdom = cloneElement(this._vdom, this._props);
+            render(this._vdom, this._root);
+          }
+        });
       }
     }
 
@@ -139,7 +145,7 @@ export const makeCustomElement = (
       const vSlots: Record<string, VNode<any>> = Object.fromEntries(
         slots.map(slot => [slot, h(Slot, { name: slot }, null)]),
       );
-      const props = { ...this._props, ...vSlots };
+      const props = { $el: this, ...this._props, ...vSlots };
       this._vdom = h(Component, props, h(Slot, { name: undefined }, null));
       // TODO: I don't know how this works (just copy-pasted from preact-custom-component)
       (this.hasAttribute('hydrate') ? hydrate : render)(this._vdom, this._root);
