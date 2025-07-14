@@ -1,5 +1,12 @@
-import { AttributeValue } from '.';
+import { AttributeValue } from './makeCustomElement';
 export declare const boolean: (val: AttributeValue) => boolean;
 export declare const string: (val: AttributeValue) => string;
-export declare const number: (val: AttributeValue) => number;
+export declare const maybeNumber: (val: AttributeValue) => number | undefined;
+export declare const number: (n: number) => (val: AttributeValue) => number;
+export declare const stringList: (val: AttributeValue) => string[];
+export declare const numberList: (val: AttributeValue) => number[];
 export declare const raw: (val: AttributeValue) => AttributeValue;
+export declare const maybeKeyword: <Key>(items: Key[]) => (val: AttributeValue) => Key | undefined;
+export declare const keyword: <Key>(deflt: Key, others: Key[]) => (val: AttributeValue) => Key;
+export declare const maybeKeywordOrNumber: <Key>(others: Key[]) => (val: AttributeValue) => Key | number | undefined;
+export declare const keywordOrNumber: <Key>(deflt: Key | number, others?: Key[]) => (val: AttributeValue) => Key | number;
