@@ -2,7 +2,7 @@
 
 - 💀 This is an WIP, UNTESTED
 
-Yet another VERY thin (<1KB Brotli'd), opinionated wrapper to convert Preact components to Web Components, with highly-customizable attribute parsers.
+Yet another VERY thin (<1.5KB Brotli'd, including all utility functions), opinionated wrapper to convert Preact components to Web Components, with highly-customizable attribute parsers.
 
 ## Installation
 
@@ -25,10 +25,9 @@ In `package.json`,
 Use `makeCustomElement` function to convert Preact components,
 
 ``` typescript
-import { makeCustomElement } from "preact-web-components";
-import { string } from "preact-web-components/attribute-types";
+import { makeCustomElement, string } from "preact-web-components";
 
-const MyInputElement = makeCustomElement(MyInput, {
+const InputElement = makeCustomElement(Input, {
   properties: [{
     name: "value",
     formAssociated: true,
@@ -40,10 +39,9 @@ const MyInputElement = makeCustomElement(MyInput, {
 or use `register` function to directly register Preact components as Web Components.
 
 ``` typescript
-import { register } from "preact-web-components";
-import { string } from "preact-web-components/attribute-types";
+import { register, string } from "preact-web-components";
 
-register(MyInput, "my-input", {
+register(Input, "my-input", {
   properties: [{
     name: "value",
     formAssociated: true,
@@ -57,41 +55,37 @@ register(MyInput, "my-input", {
 
 ``` typescript
 import type { ComponentChildren } from "preact";
-import { makeCustomElement, type AttributeValue, type SignalLike } from "preact-web-components";
-import { string } from "preact-web-components/attribute-types";
+import {
+  makeCustomElement,
+  instantiateStyleSheet,
+  string,
+  type AttributeValue,
+  type SignalLike,
+} from "preact-web-components";
 import styles from "./style.css?inline";
 
-// Preact component
-export const Input = ({ name, value, danger, icon, children }: {
-  name: string,
-  value: string,
-  danger: boolean,
-  icon: ComponentChildren,
-  children: ComponentChildren,
-}) => (
-  <div className={`input ${danger ? "danger" : ""}`}>
-    <label for="name">{icon} {children}</label>
-    <input name={name} type="text" value="value" />
-  </div>
-);
+const sheet = instantiateStyleSheet([styles]);
 
-// Web component version
-const WCInput = ({ name, value, danger, icon, children }: {
+const Input = ({ name, value, danger, icon, children }: {
+  // custom element properties are wrapped with SignalLike<T>
   name: SignalLike<string>,
   value: SignalLike<string>,
   danger: SignalLike<boolean>,
+  // custom element slots are wrapped as ComponentChildren
   icon: ComponentChildren,
   children: ComponentChildren,
 }) => (
-  <Input name={name.value} value={value.value} danger={danger.value} icon={icon}>
-    {children}
-  </Input>
+  <div className={`input ${danger.value ? "danger" : ""}`}>
+    <label for="name">{icon} {children}</label>
+    <input
+      name={name.value}
+      type="text"
+      value={value.value}
+      onInput={(e) => value.value = e.currentTarget.value} />
+  </div>
 );
 
-const sheet = new CSSStyleSheet();
-sheet.replaceSync(styles);
-
-const WCInputElement = makeCustomElement(WCInput, {
+const InputElement = makeCustomElement(Input, {
   // - Add styles to the ShadowDOM
   // This may especially be powerful when you want to reuse the same CSS
   // in many components (like reset CSS) with minimal overheads.
@@ -106,11 +100,14 @@ const WCInputElement = makeCustomElement(WCInput, {
   // They look like signals from the Preact world, and the component will be
   // re-rendered on changes.
   properties: [{
-    name: "value",
+    name: "value", // should be camelCase
     // This value will be emitted when enclosing `form` is "submit"-ted.
     formAssociated: true,
     // Initial values can (optionally) be retrieved from each corresponding DOM attributes.
-    attribute: { name: "value", type: string },
+    attribute: {
+      name: "value", // should be kebab-case
+      type: string,
+    },
   }, {
     name: "danger",
     attribute: {
@@ -129,6 +126,8 @@ Use this parameter to attach styles to the ShadowDOM.
 This may especially be powerful when you want to reuse the same CSS in many components (like reset CSS), with minimal overheads.
 
 Value must be an array of `CSSStyleSheet`.
+
+There's an utility function `instantiateStyleSheet` to instantiate `CSSStyleSheet`.
 
 ### `slots`
 
@@ -200,6 +199,8 @@ const input = document.getElementsByTagName("my-input")[0];
 input.value = "hello!";
 ```
 
+Note that property names should be camelCase.
+
 #### `formAssociated`
 
 When you want to emit an input components' value on `form` submit, you may specify `formAssociated: true` for the property you want to emit.
@@ -265,6 +266,32 @@ const MyButtonElement = makeCustomElement(MyButton, {
 ```
 
 Note that attribute change does not overwrite property values, if they are already modified by the other reasons (this is the same behavior as normal DOM elements).
+
+Note that attribute names should be kebab-case.
+
+## Built-in attribute parsers
+
+Boolean
+- `boolean` ... simple boolean paresr
+
+String
+- `string` ... string parser with default value `""`
+
+Number
+- `number(n)` ... number parser with default value `n`
+- `maybeNumber` ... number parser with default value `undefined`
+
+Comma-separated
+- `stringList` ... comma-separated string parser with default value `[]`
+- `numberList` ... comma-separated number parser with default value `[]`
+
+Keyword
+- `keyword(default, [...others])` ... enum parser that returns either `default` or one of the `others`
+- `maybeKeywordOrNumber([...keywords])` ... enum-or-number parser with default value `undefined`
+- `keywordOrNumber(default, [...others])` ... enum-or-number parser with default value `default`.
+
+Raw attribute value
+- `raw` ... identity parser that returns one of `number`, `string`, `boolean`, `null`
 
 ## Goals and non-goals
 ### Goals

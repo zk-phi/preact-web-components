@@ -17,7 +17,7 @@ export default defineConfig({
     outDir: "dist",
     sourcemap: true,
     lib: {
-      entry: ["src/index.ts", "src/attributeTypes.ts"],
+      entry: ["src/index.ts"],
       formats: ["es"],
     },
     rollupOptions: {
