@@ -72,7 +72,7 @@ const R = (t) => t && t !== "false" && t !== "0" || t === "", L = (t) => t == nu
     }
     rerender() {
       this._frameRequested || (this._frameRequested = !0, requestAnimationFrame(() => {
-        this._vdom && (this._frameRequested = !1, this._vdom = E(this._vdom, this._props), f(this._vdom, this._root));
+        this._frameRequested = !1, this._vdom && (this._vdom = E(this._vdom, this._props), f(this._vdom, this._root));
       }));
     }
     connectedCallback() {
