@@ -55,7 +55,7 @@ const serializeFormValue = (value: any): string | FormData => {
     return value.toString();
   }
   if (Array.isArray(value)) {
-    value.map(item => item.toString().replaceAll(",", "\\,")).join(",");
+    return value.map(item => item.toString().replaceAll(",", "\\,")).join(",");
   }
   // valueType must be "object" here
   const fields = Object.keys(value);
