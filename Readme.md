@@ -186,7 +186,7 @@ const WCInput = ({ value }: {
 
 const MyInputElement = makeCustomElement(WCInput, {
   ...
-  props: [
+  properties: [
     { name: "value", initialValue: "" },
   ],
 });
@@ -208,7 +208,7 @@ When you want to emit an input components' value on `form` submit, you may speci
 ``` typescript
 const MyInputElement = makeCustomElement(WCInput, {
   ...
-  props: [{
+  properties: [{
     name: "value",
     initialValue: "",
     formAssociated: true,
