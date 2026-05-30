@@ -105,6 +105,9 @@ export const makeCustomElement = (
           ) : (
             this.parseAttribute(prop.attribute)
           );
+          if (formAssociatedField === prop.name && this._internals) {
+            this._internals.setFormValue(serializeFormValue(initialValue));
+          }
           return [prop.name, {
             _dirty: false,
             _value: initialValue,
