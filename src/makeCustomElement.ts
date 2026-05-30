@@ -137,6 +137,7 @@ export const makeCustomElement = (
 
     rerender () {
       if (!this._frameRequested) {
+        this._frameRequested = true;
         requestAnimationFrame(() => {
           if (this._vdom) {
             this._frameRequested = false;
