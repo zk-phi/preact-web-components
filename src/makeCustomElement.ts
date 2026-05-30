@@ -139,8 +139,8 @@ export const makeCustomElement = (
       if (!this._frameRequested) {
         this._frameRequested = true;
         requestAnimationFrame(() => {
+          this._frameRequested = false;
           if (this._vdom) {
-            this._frameRequested = false;
             this._vdom = cloneElement(this._vdom, this._props);
             render(this._vdom, this._root);
           }
