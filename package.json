@@ -27,5 +27,8 @@
   },
   "peerDependencies": {
     "preact": "^10.26.5"
+  },
+  "dependencies": {
+    "@preact/signals": "^2.9.1"
   }
 }
