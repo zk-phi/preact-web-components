@@ -2,7 +2,7 @@
 
 - 💀 This is an WIP, UNTESTED
 
-Yet another VERY thin (<1.5KB Brotli'd, including all utility functions), opinionated wrapper to convert Preact components to Web Components, with highly-customizable attribute parsers.
+Yet another VERY thin, opinionated wrapper to convert Preact components to Web Components, with highly-customizable attribute parsers, based on @preact/signals.
 
 ## Installation
 
@@ -55,22 +55,22 @@ register(Input, "my-input", {
 
 ``` typescript
 import type { ComponentChildren } from "preact";
+import type { Signal } from "@preact/signals";
 import {
   makeCustomElement,
   instantiateStyleSheet,
   string,
   type AttributeValue,
-  type SignalLike,
 } from "preact-web-components";
 import styles from "./style.css?inline";
 
 const sheet = instantiateStyleSheet([styles]);
 
 const Input = ({ name, value, danger, icon, children }: {
-  // custom element properties are wrapped with SignalLike<T>
-  name: SignalLike<string>,
-  value: SignalLike<string>,
-  danger: SignalLike<boolean>,
+  // custom element properties are wrapped with Signal<T>
+  name: Signal<string>,
+  value: Signal<string>,
+  danger: Signal<boolean>,
   // custom element slots are wrapped as ComponentChildren
   icon: ComponentChildren,
   children: ComponentChildren,
@@ -310,7 +310,7 @@ Currently, this package's type is weak (due to technical reason -- or lack of my
 For an example, following snippet passes the type check, but is not type-safe.
 
 ``` typescript
-const Component = ({ stringProp }: { stringProp: SignalLike<string> }) => (
+const Component = ({ stringProp }: { stringProp: Signal<string> }) => (
   <span class="foo">
     {stringProp.value}
   </span>
