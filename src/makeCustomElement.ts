@@ -7,9 +7,9 @@ import {
   type FunctionalComponent,
   type VNode,
 } from "preact";
+import { signal, type Signal } from "@preact/signals";
 
 export type AttributeValue = null | string | boolean | number;
-export type SignalLike<T> = { value: T };
 
 // ----
 
@@ -33,8 +33,6 @@ export type Options = {
   slots?: string[],
   properties?: PropertyConfig<any>[],
 };
-
-type InternalProp<T> = { _dirty: boolean, _value: T, value: T };
 
 // ----
 
@@ -85,9 +83,9 @@ export const makeCustomElement = (
     static observedAttributes = observedAttributes;
     static formAssociated = !!formAssociatedField;
     _root: ShadowRoot;
-    _vdom: VNode | null = null;
     _internals: ElementInternals | null;
-    _props: Record<string, InternalProp<any>>;
+    _props: Record<string, Signal<any>>;
+    _dirtyAttrs: Record<string, true>;
     _frameRequested = false;
 
     constructor () {
@@ -95,9 +93,9 @@ export const makeCustomElement = (
       // This library assumes that the ShadowDOM feature is always enabled
       this._root = this.attachShadow({ mode: "open" });
       this._root.adoptedStyleSheets = sheets;
-      this._vdom = null as (VNode | null);
       this._internals = formAssociatedField ? this.attachInternals() : null;
       const el = this;
+      this._dirtyAttrs = {};
       this._props = Object.fromEntries(
         properties.map(prop => {
           const initialValue = "initialValue" in prop ? (
@@ -108,12 +106,7 @@ export const makeCustomElement = (
           if (formAssociatedField === prop.name && this._internals) {
             this._internals.setFormValue(serializeFormValue(initialValue));
           }
-          return [prop.name, {
-            _dirty: false,
-            _value: initialValue,
-            get value () { return this._value; },
-            set value (value: any) { el.setProp(prop.name, value, true); },
-          }];
+          return [prop.name, signal(initialValue)];
         })
       );
     }
@@ -123,28 +116,14 @@ export const makeCustomElement = (
     }
 
     setProp (name: string, value: any, markAsDirty: boolean) {
-      if (this._props[name]._value !== value) {
-        this._props[name]._value = value;
+      if (this._props[name].value !== value) {
+        this._props[name].value = value;
         if (markAsDirty) {
-          this._props[name]._dirty = true;
+          this._dirtyAttrs[name] = true;
         }
         if (formAssociatedField === name && this._internals) {
           this._internals.setFormValue(serializeFormValue(value));
         }
-        this.rerender();
-      }
-    }
-
-    rerender () {
-      if (!this._frameRequested) {
-        this._frameRequested = true;
-        requestAnimationFrame(() => {
-          this._frameRequested = false;
-          if (this._vdom) {
-            this._vdom = cloneElement(this._vdom, this._props);
-            render(this._vdom, this._root);
-          }
-        });
       }
     }
 
@@ -153,18 +132,17 @@ export const makeCustomElement = (
         slots.map(slot => [slot, h(Slot, { name: slot }, null)]),
       );
       const props = { $el: this, ...this._props, ...vSlots };
-      this._vdom = h(Component, props, h(Slot, { name: undefined }, null));
-      render(this._vdom, this._root);
+      const vdom = h(Component, props, h(Slot, { name: undefined }, null));
+      render(vdom, this._root);
     }
 
     disconnectedCallback () {
-      this._vdom = null;
       render(null, this._root);
     }
 
     attributeChangedCallback (name: string, _: AttributeValue, newValue: AttributeValue) {
       const { parser, prop } = attributes[name];
-      if (!this._props[prop]._dirty) {
+      if (!this._dirtyAttrs[prop]) {
         this.setProp(prop, parser(newValue), false);
       }
     }
@@ -173,7 +151,7 @@ export const makeCustomElement = (
   for (const prop of properties) {
     Object.defineProperty(CustomElement.prototype, prop.name, {
       get () {
-        return this._props[prop.name]._value;
+        return this._props[prop.name].value;
       },
       set (value: any) {
         this.setProp(prop.name, value, true);

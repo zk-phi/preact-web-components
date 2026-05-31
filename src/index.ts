@@ -15,7 +15,6 @@ export {
 export {
   makeCustomElement,
   type AttributeValue,
-  type SignalLike,
 } from "./makeCustomElement";
 
 export {
