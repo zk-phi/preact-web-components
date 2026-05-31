@@ -39,7 +39,7 @@ export type Options<
 };
 
 type PropsFromProperties<P extends PropertyConfig<any, any>[]> = {
-  [K in P[number]['name']]: Signal<
+  [K in P[number]["name"]]: Signal<
     Extract<P[number], { name: K }> extends PropertyConfig<infer V, K> ? V : never
   >;
 };
@@ -90,8 +90,8 @@ export const makeCustomElement = <
   Component: PreactComponent<ExpectedProps<P, S>>,
   options: Options<P, S> = {},
 ) => {
-  const properties = (options.properties ?? []) as PropertyConfig<any, any>[];
-  const slots = (options.slots ?? []) as string[];
+  const properties: PropertyConfig<any, any>[] = options.properties ?? [];
+  const slots: string[] = options.slots ?? [];
   const sheets = options.adoptedStyleSheets?.filter(s => !!s) ?? [];
   const attributes = Object.fromEntries(
     properties.filter(prop => "attribute" in prop).map(prop => (
