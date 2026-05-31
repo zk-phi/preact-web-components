@@ -529,9 +529,9 @@ const rt = (i) => H("slot", i), et = (i) => {
   for (const e of t)
     r.append(e, i[e].toString());
   return r;
-}, Tt = (i, t) => {
+}, Tt = (i, t = {}) => {
   var v, p;
-  const r = (t == null ? void 0 : t.properties) ?? [], e = (t == null ? void 0 : t.slots) ?? [], n = ((v = t == null ? void 0 : t.adoptedStyleSheets) == null ? void 0 : v.filter((l) => !!l)) ?? [], o = Object.fromEntries(
+  const r = t.properties ?? [], e = t.slots ?? [], n = ((v = t.adoptedStyleSheets) == null ? void 0 : v.filter((l) => !!l)) ?? [], o = Object.fromEntries(
     r.filter((l) => "attribute" in l).map((l) => [l.attribute.name, { prop: l.name, parser: l.attribute.type }])
   ), f = Object.keys(o), u = (p = r.find((l) => l.formAssociated)) == null ? void 0 : p.name;
   class c extends HTMLElement {
@@ -580,7 +580,7 @@ const rt = (i) => H("slot", i), et = (i) => {
       }
     });
   return c;
-}, It = (i, t, r) => {
+}, It = (i, t, r = {}) => {
   const e = Tt(i, r);
   return customElements.define(t, e);
 }, Kt = (...i) => {
