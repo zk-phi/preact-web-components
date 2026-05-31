@@ -1,8 +1,6 @@
-import { FunctionComponent, ComponentClass, FunctionalComponent, VNode } from 'preact';
+import { FunctionComponent, ComponentClass, FunctionalComponent } from 'preact';
+import { Signal } from '@preact/signals';
 export type AttributeValue = null | string | boolean | number;
-export type SignalLike<T> = {
-    value: T;
-};
 export type PreactComponent = FunctionComponent<any> | ComponentClass<any> | FunctionalComponent<any>;
 type AttributeConfig<T> = {
     name: string;
@@ -21,21 +19,15 @@ export type Options = {
     slots?: string[];
     properties?: PropertyConfig<any>[];
 };
-type InternalProp<T> = {
-    _dirty: boolean;
-    _value: T;
-    value: T;
-};
 export declare const makeCustomElement: (Component: PreactComponent, options?: Options) => {
     new (): {
         _root: ShadowRoot;
-        _vdom: VNode | null;
         _internals: ElementInternals | null;
-        _props: Record<string, InternalProp<any>>;
+        _props: Record<string, Signal<any>>;
+        _dirtyAttrs: Record<string, true>;
         _frameRequested: boolean;
         parseAttribute<T>(attribute: AttributeConfig<T>): T;
         setProp(name: string, value: any, markAsDirty: boolean): void;
-        rerender(): void;
         connectedCallback(): void;
         disconnectedCallback(): void;
         attributeChangedCallback(name: string, _: AttributeValue, newValue: AttributeValue): void;
