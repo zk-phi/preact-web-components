@@ -1,11 +1,11 @@
 import {
   h,
-  cloneElement,
   render,
   type FunctionComponent,
   type ComponentClass,
   type FunctionalComponent,
   type VNode,
+  type ComponentChildren,
 } from "preact";
 import { signal, type Signal } from "@preact/signals";
 
@@ -13,26 +13,45 @@ export type AttributeValue = null | string | boolean | number;
 
 // ----
 
-export type PreactComponent =
-  FunctionComponent<any> |
-  ComponentClass<any> |
-  FunctionalComponent<any>;
+export type PreactComponent<P> =
+  FunctionComponent<P> |
+  ComponentClass<P> |
+  FunctionalComponent<P>;
 
 type AttributeConfig<T> = {
   name: string,
   type: (value: AttributeValue) => T,
 };
-type PropertyConfig<T> = (
-  { name: string, formAssociated?: boolean }
+
+export type PropertyConfig<T, K extends string> = (
+  { name: K, formAssociated?: boolean }
 ) & (
   { attribute: AttributeConfig<T> } | { initialValue: T }
 );
 
-export type Options = {
+export type Options<
+  P extends PropertyConfig<any, any>[],
+  S extends string[]
+> = {
   adoptedStyleSheets?: (CSSStyleSheet | null)[],
-  slots?: string[],
-  properties?: PropertyConfig<any>[],
+  slots?: S,
+  properties?: P,
 };
+
+type PropsFromProperties<P extends PropertyConfig<any, any>[]> = {
+  [K in P[number]['name']]: Signal<
+    Extract<P[number], { name: K }> extends PropertyConfig<infer V, K> ? V : never
+  >;
+};
+
+type PropsFromSlots<S extends string[]> = {
+  [K in S[number]]: ComponentChildren;
+};
+
+export type ExpectedProps<P extends PropertyConfig<any, any>[], S extends string[]> =
+  PropsFromProperties<P> &
+  PropsFromSlots<S> &
+  { children: ComponentChildren, $el: HTMLElement };
 
 // ----
 
@@ -64,13 +83,16 @@ const serializeFormValue = (value: any): string | FormData => {
   return formData;
 }
 
-export const makeCustomElement = (
-  Component: PreactComponent,
-  options?: Options,
+export const makeCustomElement = <
+  const P extends PropertyConfig<any, any>[],
+  const S extends string[],
+>(
+  Component: PreactComponent<ExpectedProps<P, S>>,
+  options: Options<P, S> = {},
 ) => {
-  const properties = options?.properties ?? [];
-  const slots = options?.slots ?? [];
-  const sheets = options?.adoptedStyleSheets?.filter(s => !!s) ?? [];
+  const properties = (options.properties ?? []) as PropertyConfig<any, any>[];
+  const slots = (options.slots ?? []) as string[];
+  const sheets = options.adoptedStyleSheets?.filter(s => !!s) ?? [];
   const attributes = Object.fromEntries(
     properties.filter(prop => "attribute" in prop).map(prop => (
       [prop.attribute.name, { prop: prop.name, parser: prop.attribute.type }]
@@ -94,7 +116,6 @@ export const makeCustomElement = (
       this._root = this.attachShadow({ mode: "open" });
       this._root.adoptedStyleSheets = sheets;
       this._internals = formAssociatedField ? this.attachInternals() : null;
-      const el = this;
       this._dirtyAttrs = {};
       this._props = Object.fromEntries(
         properties.map(prop => {
@@ -131,7 +152,7 @@ export const makeCustomElement = (
       const vSlots: Record<string, VNode<any>> = Object.fromEntries(
         slots.map(slot => [slot, h(Slot, { name: slot }, null)]),
       );
-      const props = { $el: this, ...this._props, ...vSlots };
+      const props = { $el: this, ...this._props, ...vSlots } as unknown as ExpectedProps<P, S>;
       const vdom = h(Component, props, h(Slot, { name: undefined }, null));
       render(vdom, this._root);
     }
@@ -159,5 +180,12 @@ export const makeCustomElement = (
     });
   }
 
-  return CustomElement;
+  return CustomElement as unknown as {
+    new (): HTMLElement & {
+      [K in P[number]['name']]:
+      Extract<P[number], { name: K }> extends PropertyConfig<infer V, K> ? V : never
+    };
+    observedAttributes: string[];
+    formAssociated: boolean;
+  };
 };
