@@ -312,3 +312,13 @@ Following features are NOT planned (to keep this library simple).
   - Reason: Normal DOM elements does not do that.
     - This library aims to make it easier to creating custom elements,
       that behaves just like normal DOM elements.
+
+### FIXMEs
+
+- keyword attribute parsers requires explicit type annotations
+  - example: `type: keyword<"md"|"sm">("md", ["sm"])`
+    - should be like this: `type: keyword("md", ["sm"])`
+
+- complex initialValues requires explicit type assertions
+  - example: `initialValue: [1, 2, 3] as number[]`
+    - should be like this: `initialValue: [1, 2, 3]`
