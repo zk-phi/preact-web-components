@@ -15,7 +15,8 @@
   },
   "scripts": {
     "build": "vite build",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "test-type": "tsc --lib esnext --noEmit ./type-tests.ts"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.1",
