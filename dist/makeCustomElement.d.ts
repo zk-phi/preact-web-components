@@ -20,7 +20,7 @@ export type Options<P extends PropertyConfig<any, any>[], S extends string[]> = 
     properties?: P;
 };
 type PropsFromProperties<P extends PropertyConfig<any, any>[]> = {
-    [K in P[number]['name']]: Signal<Extract<P[number], {
+    [K in P[number]["name"]]: Signal<Extract<P[number], {
         name: K;
     }> extends PropertyConfig<infer V, K> ? V : never>;
 };
