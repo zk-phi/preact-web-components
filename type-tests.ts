@@ -81,6 +81,15 @@ makeCustomElement(SimpleComponent, {
   slots: ["slot"],
 });
 
+// 1-4. Valid case with initialValues
+makeCustomElement(SimpleComponent, {
+  properties: [
+    { name: "name", initialValue: "" },
+    { name: "age", initialValue: 0 },
+  ],
+  slots: ["slot"],
+});
+
 // @ts-expect-error: 2-1. Error case: Invalid prop in component
 makeCustomElement(ComponentWithInvalidProp, {
   properties: [
@@ -124,7 +133,16 @@ makeCustomElement(SimpleComponent, {
   slots: ["slot"],
 });
 
-// @ts-expect-error: 4-2. Error case: Slot/prop mismatch
+// @ts-expect-error: 4-2. Error case: initialValue type mismatch
+makeCustomElement(SimpleComponent, {
+  properties: [
+    { name: "name", initialValue: 0 },
+    { name: "age", initialValue: "" },
+  ],
+  slots: ["slot"],
+});
+
+// @ts-expect-error: 4-3. Error case: Slot/prop mismatch
 makeCustomElement(SimpleComponent, {
   properties: [
     { name: "name", attribute: { name: "name", type: string } },
