@@ -286,9 +286,9 @@ Comma-separated
 - `numberList` ... comma-separated number parser with default value `[]`
 
 Keyword
-- `keyword(default, [...others])` ... enum parser that returns either `default` or one of the `others`
-- `maybeKeywordOrNumber([...keywords])` ... enum-or-number parser with default value `undefined`
-- `keywordOrNumber(default, [...others])` ... enum-or-number parser with default value `default`.
+- `keyword<Keys>(default, [...others])` ... enum parser that returns either `default` or one of the `others`
+- `maybeKeywordOrNumber<Keys>([...keywords])` ... enum-or-number parser with default value `undefined`
+- `keywordOrNumber<Keys>(default, [...others])` ... enum-or-number parser with default value `default`.
 
 Raw attribute value
 - `raw` ... identity parser that returns one of `number`, `string`, `boolean`, `null`
@@ -315,10 +315,10 @@ Following features are NOT planned (to keep this library simple).
 
 ### FIXMEs
 
-- keyword attribute parsers requires explicit type annotations
+- strict type inference for keyword attribute parsers
   - example: `type: keyword<"md"|"sm">("md", ["sm"])`
     - should be like this: `type: keyword("md", ["sm"])`
 
-- complex initialValues requires explicit type assertions
-  - example: `initialValue: [1, 2, 3] as number[]`
-    - should be like this: `initialValue: [1, 2, 3]`
+- complex initialValues requires readonly assertions
+  - example: `numbers: Signal<readonly number[]>` for `initialValue: [1, 2, 3]`
+    - should be like this: `numbers: Signal<number[]>`
