@@ -1,18 +1,22 @@
 import type { Signal } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 import { makeCustomElement } from "./src/makeCustomElement";
-import { string, boolean, number } from "./src/attributeTypes";
+import { string, boolean, number, keyword } from "./src/attributeTypes";
+
+type Variant = "default" | "primary";
 
 const FullComponent = ({
   $el,
   name,
   age,
+  variant,
   slot,
   children,
 }: {
   $el: HTMLElement,
   name: Signal<string>,
   age: Signal<number>,
+  variant: Signal<Variant>,
   slot: ComponentChildren,
   children: ComponentChildren,
 }) => null;
@@ -52,6 +56,13 @@ const ValidElement = makeCustomElement(FullComponent, {
   properties: [
     { name: "name", attribute: { name: "name", type: string } },
     { name: "age", attribute: { name: "age", type: number(0) } },
+    {
+      name: "variant",
+      attribute: {
+        name: "variant",
+        type: keyword<Variant>("default", ["primary"]),
+      },
+    },
   ],
   slots: ["slot"],
 });
