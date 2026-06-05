@@ -21,7 +21,7 @@ export default defineConfig({
       formats: ["es"],
     },
     rollupOptions: {
-      external: ["preact", "preact/jsx-runtime"],
+      external: ["preact", "preact/jsx-runtime", "@preact/signals"],
     },
   },
 })
