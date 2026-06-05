@@ -2,13 +2,15 @@
 
 - 💀 This is an WIP, UNTESTED
 
-Yet another VERY thin, opinionated wrapper to convert Preact components to Web Components, with highly-customizable attribute parsers, based on @preact/signals.
+Yet another VERY thin (< 900B Brotli'd, excluding helper functions), opinionated wrapper to convert Preact components to Web Components, with highly-customizable attribute parsers, and optimized performance powered by `@preact/signals`.
+
+Built to implement design-systems with Web Components.
 
 ## Installation
 
-Install directly from this repo.
+Install directly from this repo:
 
-In `package.json`,
+in `package.json`,
 
 ``` javascript
 ...
@@ -19,6 +21,8 @@ In `package.json`,
   }
 }
 ```
+
+Make sure you have installed peer dependencies (`preact`, `@preact/signals`).
 
 ## Usage
 
@@ -34,9 +38,11 @@ const InputElement = makeCustomElement(Input, {
     attributes: { name: "value", type: string },
   }],
 });
+
+customElements.define("my-input", InputElement);
 ```
 
-or use `register` function to directly register Preact components as Web Components.
+or use `register` helper function to directly register Preact components as Web Components.
 
 ``` typescript
 import { register, string } from "preact-web-components";
@@ -50,6 +56,29 @@ register(Input, "my-input", {
 });
 ```
 
+## Pros and Cons
+
+Pros:
+
+- VERY thin
+- seamless integration between Preact props DOM props and DOM attributes
+- built-in `<slot>`s integration to give children to the components
+- customizable attribute parsers to yield non-primitive DOM property values
+- automatic and effortless `<form>` integration (`formAssociated`)
+- reusable CSS with performance (`adoptedStyleSheets`)
+- optimized re-rendering performance powered by `@preact/signals`
+- components can be nested (unlike an existing implementation)
+- strictly typed interface
+
+Cons:
+
+- `@preact/signals` is required
+- Shadow DOM is required
+
+TODOs:
+
+- improve type usability
+
 ## Option parameters
 ### Full example
 
@@ -62,25 +91,24 @@ import {
   string,
   type AttributeValue,
 } from "preact-web-components";
+import resetCSS from "@/styles/reset";
 import styles from "./style.css?inline";
 
-const sheet = instantiateStyleSheet([styles]);
-
 const Input = ({ name, value, danger, icon, children }: {
-  // custom element properties are wrapped with Signal<T>
+  // custom element properties are converted to Preact signals
   name: Signal<string>,
   value: Signal<string>,
   danger: Signal<boolean>,
-  // custom element slots are wrapped as ComponentChildren
+  // custom element slots are converted to ComponentChildren
   icon: ComponentChildren,
   children: ComponentChildren,
 }) => (
   <div className={`input ${danger.value ? "danger" : ""}`}>
     <label for="name">{icon} {children}</label>
     <input
-      name={name.value}
+      name={name}
       type="text"
-      value={value.value}
+      value={value}
       onInput={(e) => value.value = e.currentTarget.value} />
   </div>
 );
@@ -89,10 +117,9 @@ const InputElement = makeCustomElement(Input, {
   // - Add styles to the ShadowDOM
   // This may especially be powerful when you want to reuse the same CSS
   // in many components (like reset CSS) with minimal overheads.
-  adoptedStyleSheets: [sheet],
+  adoptedStyleSheets: [resetCSS, instantiateStyleSheet([styles])],
   // - Register slots
-  // Create slots and pass to Preact component through its properties.
-  // This is usually used for props with type `ComponentChildren`.
+  // Create slots and pass to Preact component as `ComponentChildren`.
   slots: ["icon"],
   // - Register DOM properties
   // Create states that are both accessible from the Preact world,
@@ -100,20 +127,20 @@ const InputElement = makeCustomElement(Input, {
   // They look like signals from the Preact world, and the component will be
   // re-rendered on changes.
   properties: [{
-    name: "value", // should be camelCase
-    // This value will be emitted when enclosing `form` is "submit"-ted.
+    name: "value", // * this should be camelCased
+    // This value will be automatically emitted when submitting an enclosing `<form>`.
     formAssociated: true,
-    // Initial values can (optionally) be retrieved from each corresponding DOM attributes.
+    // Initial values can (optionally) be retrieved from their corresponding DOM attributes
     attribute: {
-      name: "value", // should be kebab-case
+      name: "value", // * this should be kebab-cased
       type: string,
     },
   }, {
     name: "danger",
     attribute: {
       name: "danger",
-      // You may also define custom parsers for attributes
-      type: (v: AttributeValue) => v && v !== "false" || v === "",
+      // You may also give custom parsers for attributes
+      type: (v: AttributeValue): boolean => v && v !== "false" || v === "",
     },
   }],
 });
@@ -121,17 +148,17 @@ const InputElement = makeCustomElement(Input, {
 
 ### `adoptedStyleSheets`
 
-Use this parameter to attach styles to the ShadowDOM.
+Use this parameter to attach CSS objects to the ShadowDOM.
 
 This may especially be powerful when you want to reuse the same CSS in many components (like reset CSS), with minimal overheads.
 
 Value must be an array of `CSSStyleSheet`.
 
-There's an utility function `instantiateStyleSheet` to instantiate `CSSStyleSheet`.
+There's a helper function `instantiateStyleSheet` to instantiate `CSSStyleSheet`.
 
 ### `slots`
 
-Use this parameter to accept DOM elements as arguments to the Custom Element.
+Use this parameter to create slots and pass to the Preact component as `ComponentChildren`.
 
 For an example, when you have a component like this:
 
@@ -153,7 +180,7 @@ const FormFieldElement = makeCustomElement(FormField, {
 });
 ```
 
-so that users may pass an `img` tag as the `icon` argument of the component.
+so that users may pass an `img` tag as the `icon` property of the component.
 
 ``` html
 <form-field label="foo">
@@ -162,51 +189,60 @@ so that users may pass an `img` tag as the `icon` argument of the component.
 </form-field>
 ```
 
+Note that `children` slot does not need explicit declaration and automatically created by default (You may ignore or dispose it though).
+
 ### `properties`
 
 Use this parameter to create local states, that are both accessible from inside the Preact component, and outside (i.e. the vanilla JS world).
 
-For an example, when you have an input component like this:
+For an example, when you have a component like this:
 
 ``` typescript
-const MyInput = ({ value, onInput }) => (
-  <input type="text" value={value} onInput={onInput} />
+const FormField = ({ icon, label, children }) => (
+  <div>
+    <label>{icon} {label}</label>
+    {children}
+  </div>
 )
 ```
 
-then you may want a `value` DOM prop,
+then you may want a `label` DOM prop,
 
 ``` typescript
-const WCInput = ({ value }: {
-  // DOM properties look like Signals from the Preact world
-  value: Signal<string>
-}) => (
-  <MyInput value={value.value} />
-);
-
-const MyInputElement = makeCustomElement(WCInput, {
+const FormFieldElement = makeCustomElement(FormField, {
   ...
   properties: [
-    { name: "value", initialValue: "" },
+    { name: "label", attribute: { name: "label", type: string } }
   ],
 });
 ```
 
-so that users may update the value from outside the component.
+so that users can set `label` value via DOM attirbutes,
 
-``` typescript
-const input = document.getElementsByTagName("my-input")[0];
-input.value = "hello!";
+``` html
+<form-field label="foo">
+  <img slot="icon" src="icon.svg">
+  <input type="text" />
+</form-field>
 ```
 
-Note that property names should be camelCase.
+or modify via the JS interface.
+
+``` typescript
+const field = document.getElementsByTagName("form-field")[0];
+field.label = "bar";
+```
+
+Note that attribute change does not update property values if the property is already modified by the other reasons (this is the same behavior as normal DOM elements).
+
+Note that property names should be camelCased, and attribute names should be kebab-cased.
 
 #### `formAssociated`
 
 When you want to emit an input components' value on `form` submit, you may specify `formAssociated: true` for the property you want to emit.
 
 ``` typescript
-const MyInputElement = makeCustomElement(WCInput, {
+const MyInputElement = makeCustomElement(MyInput, {
   ...
   properties: [{
     name: "value",
@@ -216,58 +252,13 @@ const MyInputElement = makeCustomElement(WCInput, {
 });
 ```
 
-Users can use your component, just like other input elements this way.
-
-#### `attribute`
-
-When you want to retrieve initial values of DOM properties, you may specify `attribute` field of the property.
-
-For an example, when you have a component like this:
+This way users can use your component just like normal input elements.
 
 ``` typescript
-const MyButton = ({ variant, onClick, children }) => (
-  <button class={variant} onClick={onClick}>
-    {children}
-  </button>
-)
+<form method="POST" action="/submit">
+  <my-input name="field1" />
+</form>
 ```
-
-then you may be want to read `variant` value from the DOM attributes,
-
-``` typescript
-const MyButtonElement = makeCustomElement(MyButton, {
-  ...
-  properties: [{
-    name: "variant",
-    attribute: { name: "variant", type: string }
-  }],
-});
-```
-
-so that users may select variant of the button through the DOM attribute `variant`.
-
-``` html
-<my-button variant="primary">Hello!</button>
-```
-
-You may also set an arbitrary parser as an attribute type.
-
-``` typescript
-const MyButtonElement = makeCustomElement(MyButton, {
-  ...
-  properties: [{
-    name: "variant",
-    attribute: {
-      name: "variant",
-      type: (attr: AttributeValue) => myVariantParser(attr),
-    },
-  }],
-});
-```
-
-Note that attribute change does not overwrite property values, if they are already modified by the other reasons (this is the same behavior as normal DOM elements).
-
-Note that attribute names should be kebab-case.
 
 ## Built-in attribute parsers
 
@@ -296,7 +287,7 @@ Raw attribute value
 ## Goals and non-goals
 ### Goals
 
-- To make it easier to make custom elements, that behaves just like normal DOM elements
+- Making it easier to make custom elements, that behaves just like normal DOM elements
 
 ### Non-goals
 
@@ -309,9 +300,7 @@ Following features are NOT planned (to keep this library simple).
   - Reason: You may use signals, if you need a global state.
 
 - Support attribute reflection (auto-updating attribute values on property values change)
-  - Reason: Normal DOM elements does not do that.
-    - This library aims to make it easier to creating custom elements,
-      that behaves just like normal DOM elements.
+  - Reason: Normal DOM elements does not behave like that.
 
 ### FIXMEs
 
