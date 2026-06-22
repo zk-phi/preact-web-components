@@ -56,24 +56,25 @@ register(Input, "my-input", {
 });
 ```
 
-## Pros and Cons
+## Pros and Limitations
 
 Pros:
 
 - VERY thin
-- seamless integration between Preact props DOM props and DOM attributes
-- built-in `<slot>`s integration to give children to the components
-- customizable attribute parsers to yield non-primitive DOM property values
+- seamless integration between component states and DOM states
+- built-in `<slot>` injection that allows components to have children
+- fully customizable attribute parsers to yield non-primitive property values
 - automatic and effortless `<form>` integration (`formAssociated`)
-- reusable CSS with performance (`adoptedStyleSheets`)
-- optimized re-rendering performance powered by `@preact/signals`
-- components can be nested (unlike an existing implementation)
+- CSS injection with performance (`adoptedStyleSheets`)
+- optimized re-rendering powered by `@preact/signals`
+- components can be nested (unlike alternative implementations)
 - strictly typed interface
 
-Cons:
+Limitations:
 
 - `@preact/signals` is required
-- Shadow DOM is required
+- Shadow DOM must be enabled
+- components cannot access or detect the existence of their children
 
 TODOs:
 
