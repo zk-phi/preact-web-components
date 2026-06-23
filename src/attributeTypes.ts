@@ -45,24 +45,24 @@ export const raw = (val: AttributeValue): AttributeValue => (
   val
 );
 
-export const maybeKeyword = <Key>(items: Key[]) => {
+export const maybeKeyword = <const Key>(items: Key[]) => {
   return (val: AttributeValue): Key | undefined => {
     const string = val?.toString() ?? "";
     return items.find(item => item === string) ?? undefined;
   };
 };
 
-export const keyword = <Key>(deflt: Key, others: Key[]) => {
+export const keyword = <const Key>(deflt: Key, others: Key[]) => {
   const find = maybeKeyword(others);
   return (val: AttributeValue): Key => find(val) ?? deflt;
 };
 
-export const maybeKeywordOrNumber = <Key>(others: Key[]) => {
+export const maybeKeywordOrNumber = <const Key>(others: Key[]) => {
   const find = maybeKeyword(others);
   return (val: AttributeValue): Key | number | undefined => find(val) ?? maybeNumber(val);
 };
 
-export const keywordOrNumber = <Key>(deflt: Key | number, others: Key[] = []) => {
+export const keywordOrNumber = <const Key>(deflt: Key | number, others: Key[] = []) => {
   const find = maybeKeywordOrNumber([deflt, ...others]);
   return (val: AttributeValue): Key | number => find(val) ?? deflt;
 };
