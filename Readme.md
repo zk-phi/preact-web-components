@@ -78,10 +78,9 @@ Limitations:
 
 TODOs:
 
-- improve type usability
+- better type inference
 
-## Option parameters
-### Full example
+## Full example
 
 ``` typescript
 import type { ComponentChildren } from "preact";
@@ -96,11 +95,11 @@ import resetCSS from "@/styles/reset";
 import styles from "./style.css?inline";
 
 const Input = ({ name, value, danger, icon, children }: {
-  // custom element properties are converted to Preact signals
+  // custom element properties are wrapped with Preact signals
   name: Signal<string>,
   value: Signal<string>,
   danger: Signal<boolean>,
-  // custom element slots are converted to ComponentChildren
+  // custom element slots are passed as ComponentChildren
   icon: ComponentChildren,
   children: ComponentChildren,
 }) => (
@@ -115,23 +114,16 @@ const Input = ({ name, value, danger, icon, children }: {
 );
 
 const InputElement = makeCustomElement(Input, {
-  // - Add styles to the ShadowDOM
-  // This may especially be powerful when you want to reuse the same CSS
-  // in many components (like reset CSS) with minimal overheads.
+  // - adoptedStyleSheets: Inject styles to the ShadowDOM
   adoptedStyleSheets: [resetCSS, instantiateStyleSheet([styles])],
-  // - Register slots
-  // Create slots and pass to Preact component as `ComponentChildren`.
+  // - slots: Declare slots
   slots: ["icon"],
-  // - Register DOM properties
-  // Create states that are both accessible from the Preact world,
-  // and the vanilla JS world.
-  // They look like signals from the Preact world, and the component will be
-  // re-rendered on changes.
+  // - properties: Declare DOM properties
   properties: [{
     name: "value", // * this should be camelCased
-    // This value will be automatically emitted when submitting an enclosing `<form>`.
+    // - formAssociated: Integrate into `<form>` tags
     formAssociated: true,
-    // Initial values can (optionally) be retrieved from their corresponding DOM attributes
+    // - attribute: Retrieve initial property value from a DOM attribute
     attribute: {
       name: "value", // * this should be kebab-cased
       type: string,
@@ -140,7 +132,7 @@ const InputElement = makeCustomElement(Input, {
     name: "danger",
     attribute: {
       name: "danger",
-      // You may also give custom parsers for attributes
+      // You may also define custom parsers to parse attribute values
       type: (v: AttributeValue): boolean => v && v !== "false" || v === "",
     },
   }],
@@ -149,7 +141,7 @@ const InputElement = makeCustomElement(Input, {
 
 ### `adoptedStyleSheets`
 
-Use this parameter to attach CSS objects to the ShadowDOM.
+Use this parameter to attach `CSSStyleSheet`s to the ShadowDOM.
 
 This may especially be powerful when you want to reuse the same CSS in many components (like reset CSS), with minimal overheads.
 
@@ -181,7 +173,7 @@ const FormFieldElement = makeCustomElement(FormField, {
 });
 ```
 
-so that users may pass an `img` tag as the `icon` property of the component.
+so that users may pass an `img` tag for the `icon` property of the component.
 
 ``` html
 <form-field label="foo">
@@ -190,11 +182,13 @@ so that users may pass an `img` tag as the `icon` property of the component.
 </form-field>
 ```
 
-Note that `children` slot does not need explicit declaration and automatically created by default (You may ignore or dispose it though).
+Note that `children` slot does not need explicit declaration and automatically created by default (which you may ignore to dispose).
 
-### `properties`
+### `properties` and `attribute`
 
-Use this parameter to create local states, that are both accessible from inside the Preact component, and outside (i.e. the vanilla JS world).
+Use this parameter to create local states, that are both accessible from the Preact world, and the vanilla JS world.
+
+They look like signals from the Preact world, so that components may subscribe to their value changes.
 
 For an example, when you have a component like this:
 
@@ -218,7 +212,7 @@ const FormFieldElement = makeCustomElement(FormField, {
 });
 ```
 
-so that users can set `label` value via DOM attirbutes,
+so that users can set `label` property value through the `label` DOM attirbute,
 
 ``` html
 <form-field label="foo">
@@ -227,7 +221,7 @@ so that users can set `label` value via DOM attirbutes,
 </form-field>
 ```
 
-or modify via the JS interface.
+or modify via the JS API.
 
 ``` typescript
 const field = document.getElementsByTagName("form-field")[0];
@@ -295,9 +289,9 @@ Raw attribute value
 Following features are NOT planned (to keep this library simple).
 
 - Support custom elements without ShadowDOM
-  - Reason: Slots is a part of ShadowDOM API.
+  - Reason: Slots are part of the ShadowDOM API.
 
-- Support for Preact contexts
+- Support Preact contexts
   - Reason: You may use signals, if you need a global state.
 
 - Support attribute reflection (auto-updating attribute values on property values change)
@@ -305,7 +299,9 @@ Following features are NOT planned (to keep this library simple).
 
 ### FIXMEs
 
-- strict type inference for keyword attribute parsers
+Improve type usability
+
+- type inference does not work properly for keyword parsers
   - example: `type: keyword<"md"|"sm">("md", ["sm"])`
     - should be like this: `type: keyword("md", ["sm"])`
 
